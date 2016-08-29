@@ -6,40 +6,143 @@
 //  Copyright (c) 2016 Amazing Daria. All rights reserved.
 //
 
+import Foundation
+import UIKit
 import SpriteKit
 
 class GameScene: SKScene {
-    override func didMoveToView(view: SKView) {
-        /* Setup your scene here */
-        let myLabel = SKLabelNode(fontNamed:"Chalkduster")
-        myLabel.text = "Hello, World!"
-        myLabel.fontSize = 45
-        myLabel.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame))
+
+    let player = SKSpriteNode (imageNamed: "playerShip")
+    
+    let bulletSound = SKAction.playSoundFileNamed("soundeffect1" , waitForCompletion: false)
+    
+    
+    func random() -> CGFloat {
         
-        self.addChild(myLabel)
+        return CGFloat (Float(arc4random()) / 0xFFFFFFFF)
+        
     }
     
-    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
-       /* Called when a touch begins */
+    func random(min min: CGFloat, max: CGFloat) -> CGFloat {
         
-        for touch in touches {
-            let location = touch.locationInNode(self)
-            
-            let sprite = SKSpriteNode(imageNamed:"Spaceship")
-            
-            sprite.xScale = 0.5
-            sprite.yScale = 0.5
-            sprite.position = location
-            
-            let action = SKAction.rotateByAngle(CGFloat(M_PI), duration:1)
-            
-            sprite.runAction(SKAction.repeatActionForever(action))
-            
-            self.addChild(sprite)
-        }
+        return random() * (max - min) + min
+        
     }
+
+    
+    var gameArea: CGRect
+    
+    override init(size: CGSize) {
+        
+        let maxAspectRatio: CGFloat = 16.0/9.0
+        let playableWidth = size.height / maxAspectRatio
+        let margin = (size.width - playableWidth) / 2
+        gameArea = CGRect (x: margin, y: 0, width: playableWidth, height: size.height)
+        
+        super.init(size: size)
+        
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func didMoveToView(view: SKView) {
+        
+        let background = SKSpriteNode (imageNamed: "background")
+        background.size = self.size
+        background.position = CGPoint (x: self.size.width/2, y: self.size.height/2)
+        background.zPosition = 0
+        self.addChild(background)
+        
+        
+        player.setScale(1)
+        player.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.2)
+        player.zPosition = 2
+        self.addChild(player)
+        
+        
+    }
+    
+    
+    func fireBullet() {
+        
+        let bullet = SKSpriteNode (imageNamed: "bullet")
+        bullet.setScale(1)
+        bullet.position = player.position
+        bullet.zPosition = 1
+        self.addChild(bullet)
+        
+        let moveBullet = SKAction.moveToY(self.size.height + bullet.size.height, duration: 1)
+        let deleteBullet = SKAction.removeFromParent()
+        
+        let bulletSequence = SKAction.sequence([bulletSound, moveBullet, deleteBullet])
+        bullet.runAction(bulletSequence)
+        
+    }
+    
+    func spawnEnemy() {
+        
+        let randomXStart = random(min: CGRectGetMinX(gameArea) , max: CGRectGetMaxX(gameArea))
+        let randomXEnd = random(min: CGRectGetMinX(gameArea), max: CGRectGetMaxX(gameArea))
+        
+        let startPoint = CGPoint(x: randomXStart, y: self.size.height * 1.2)
+        let endPoint = CGPoint(x: randomXEnd, y: -self.size.height * 0.2)
+        
+        let enemy = SKSpriteNode (imageNamed: "enemyShip")
+        enemy.setScale (1)
+        enemy.position = startPoint
+        enemy.zPosition = 2
+        self.addChild(enemy)
+        
+        let moveEnemy = SKAction.moveTo(endPoint, duration: 1.5)
+        let deleteEnemy = SKAction.removeFromParent()
+        let enemySequence = SKAction.sequence([moveEnemy, deleteEnemy])
+        enemy.runAction(enemySequence)
+        
+        let dx = endPoint.x - startPoint.x
+        let dy = endPoint.y - startPoint.y
+        let amountToRotate = atan2(dy, dx)
+        enemy.zRotation = amountToRotate
+    }
+
    
-    override func update(currentTime: CFTimeInterval) {
-        /* Called before each frame is rendered */
+
+    override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        
+        fireBullet()
+        spawnEnemy()
+        
+    }
+    
+    
+    override func touchesMoved(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        
+        for touch: AnyObject in touches {
+            
+            let pointOfTouch = touch.locationInNode(self)
+            let previousPoinOfTouch = touch.previousLocationInNode(self)
+            
+            let amountDragged = pointOfTouch.x - previousPoinOfTouch.x
+            
+            player.position.x += amountDragged
+            
+            if player.position.x > CGRectGetMaxX(gameArea) - player.size.width / 2 {
+                
+                player.position.x = CGRectGetMaxX(gameArea) - player.size.width / 2
+                
+            }
+            
+            if player.position.x < CGRectGetMinX(gameArea) + player.size.width / 2 {
+                
+                player.position.x = CGRectGetMinX(gameArea) + player.size.width / 2
+                
+            }
+            
+        }
+        
     }
 }
+
+
+
