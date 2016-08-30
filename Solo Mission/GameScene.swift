@@ -10,12 +10,20 @@ import Foundation
 import UIKit
 import SpriteKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
 
     let player = SKSpriteNode (imageNamed: "playerShip")
     
     let bulletSound = SKAction.playSoundFileNamed("soundeffect1" , waitForCompletion: false)
     
+    struct PhysicsCategories {
+        
+        static let None: UInt32 = 0
+        static let Player: UInt32 = 0b1 //1
+        static let Bullet: UInt32 = 0b10 //2
+        static let Enemy: UInt32 = 0b100 //4
+        
+    }
     
     func random() -> CGFloat {
         
@@ -49,6 +57,8 @@ class GameScene: SKScene {
     
     override func didMoveToView(view: SKView) {
         
+        self.physicsWorld.contactDelegate = self
+        
         let background = SKSpriteNode (imageNamed: "background")
         background.size = self.size
         background.position = CGPoint (x: self.size.width/2, y: self.size.height/2)
@@ -59,9 +69,25 @@ class GameScene: SKScene {
         player.setScale(1)
         player.position = CGPoint(x: self.size.width/2, y: self.size.height * 0.2)
         player.zPosition = 2
+        player.physicsBody = SKPhysicsBody(rectangleOfSize: player.size)
+        player.physicsBody!.affectedByGravity = false
+        player.physicsBody!.categoryBitMask = PhysicsCategories.Player
+        player.physicsBody!.collisionBitMask = PhysicsCategories.None
+        player.physicsBody!.contactTestBitMask = PhysicsCategories.Enemy
         self.addChild(player)
         
+        startNewLevel()
         
+    }
+    
+    
+    func startNewLevel() {
+        
+        let spawn = SKAction.runBlock(spawnEnemy)
+        let waitToSpawn = SKAction.waitForDuration(1)
+        let spawnSequence = SKAction.sequence([spawn, waitToSpawn])
+        let spawnForever = SKAction.repeatActionForever(spawnSequence)
+        self.runAction(spawnForever)
     }
     
     
@@ -71,6 +97,11 @@ class GameScene: SKScene {
         bullet.setScale(1)
         bullet.position = player.position
         bullet.zPosition = 1
+        bullet.physicsBody = SKPhysicsBody(rectangleOfSize: bullet.size)
+        bullet.physicsBody!.affectedByGravity = false
+        bullet.physicsBody!.categoryBitMask = PhysicsCategories.Bullet
+        bullet.physicsBody!.collisionBitMask = PhysicsCategories.None
+        bullet.physicsBody!.contactTestBitMask = PhysicsCategories.Enemy
         self.addChild(bullet)
         
         let moveBullet = SKAction.moveToY(self.size.height + bullet.size.height, duration: 1)
@@ -93,6 +124,11 @@ class GameScene: SKScene {
         enemy.setScale (1)
         enemy.position = startPoint
         enemy.zPosition = 2
+        enemy.physicsBody = SKPhysicsBody(rectangleOfSize: enemy.size)
+        enemy.physicsBody!.affectedByGravity = false
+        enemy.physicsBody!.categoryBitMask = PhysicsCategories.Enemy
+        enemy.physicsBody!.collisionBitMask = PhysicsCategories.None
+        enemy.physicsBody!.contactTestBitMask = PhysicsCategories.Player | PhysicsCategories.Bullet
         self.addChild(enemy)
         
         let moveEnemy = SKAction.moveTo(endPoint, duration: 1.5)
@@ -111,7 +147,6 @@ class GameScene: SKScene {
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
         
         fireBullet()
-        spawnEnemy()
         
     }
     
